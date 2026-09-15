@@ -33,8 +33,7 @@ client = genai.Client(
 # -----------------------------------------
 
 PRIMARY_MODEL = "gemini-3.6-flash"
-
-BACKUP_MODEL = "gemini-3.5-flash"
+BACKUP_MODEL = "gemini-3.5-flash-lite"
 
 
 # -----------------------------------------
@@ -49,6 +48,9 @@ def call_gemini(model, prompt):
         model=model,
         contents=prompt
     )
+
+    if not response.text:
+        raise Exception("Gemini returned an empty response.")
 
     return response.text
 
@@ -65,10 +67,14 @@ def generate_llm_answer(prompt):
 
     try:
 
-        return call_gemini(
+        answer = call_gemini(
             PRIMARY_MODEL,
             prompt
         )
+
+        print("\n✅ Primary Gemini model succeeded.")
+
+        return answer
 
     except Exception as primary_error:
 
@@ -77,11 +83,6 @@ def generate_llm_answer(prompt):
         print("\n⚠️ Primary model failed.")
         print("Error:", error_message)
 
-
-        # -----------------------------------------
-        # TEMPORARY SERVER ERROR (503)
-        # -----------------------------------------
-
         if "503" in error_message:
 
             print(
@@ -89,30 +90,19 @@ def generate_llm_answer(prompt):
                 "unavailable."
             )
 
-            # Short wait instead of 10/20/40 seconds
             time.sleep(2)
-
-
-        # -----------------------------------------
-        # RATE LIMIT / QUOTA ERROR (429)
-        # -----------------------------------------
 
         elif "429" in error_message:
 
             print(
-                "\n⚠️ Primary model reached its "
-                "rate limit."
+                "\n⚠️ Primary Gemini model reached "
+                "its rate limit."
             )
-
-
-        # -----------------------------------------
-        # OTHER ERROR
-        # -----------------------------------------
 
         else:
 
             print(
-                "\n⚠️ Primary model encountered "
+                "\n⚠️ Primary Gemini model encountered "
                 "another error."
             )
 
@@ -128,45 +118,26 @@ def generate_llm_answer(prompt):
             f"{BACKUP_MODEL}"
         )
 
-        return call_gemini(
+        answer = call_gemini(
             BACKUP_MODEL,
             prompt
         )
 
+        print("\n✅ Backup Gemini model succeeded.")
+
+        return answer
+
     except Exception as backup_error:
 
         print("\n❌ Backup model also failed.")
-        print(
-            "Error:",
-            str(backup_error)
-        )
+        print("Error:", str(backup_error))
 
 
     # -----------------------------------------
     # BOTH MODELS FAILED
     # -----------------------------------------
 
-    return (
-        "Sorry, the agriculture AI service is "
-        "temporarily unavailable. Please try again "
-        "after some time."
+    raise Exception(
+        "Both Gemini models are currently unavailable. "
+        "Please try again later."
     )
-# -----------------------------------------
-# TEST THE LLM SERVICE
-# -----------------------------------------
-
-if __name__ == "__main__":
-
-    test_prompt = """
-Answer the following question in simple English.
-
-What is agriculture?
-"""
-
-    answer = generate_llm_answer(test_prompt)
-
-    print("\n========================================")
-    print("🌾 LLM SERVICE TEST")
-    print("========================================")
-
-    print(answer)
