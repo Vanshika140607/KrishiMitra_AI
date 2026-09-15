@@ -1,10 +1,10 @@
-from .retriever import (
+from rag.retriever import (
     retrieve_documents,
     remove_duplicates,
     rerank_documents
 )
 
-from .llm_service import generate_llm_answer
+from rag.llm_service import generate_llm_answer
 from .response_cache import (
     get_cached_answer,
     save_answer_to_cache
